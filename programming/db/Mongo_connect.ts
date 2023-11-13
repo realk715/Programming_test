@@ -33,6 +33,19 @@ class MongoConnect {
         }
     }
 
+    public async updateData(db:string, collection:string, id:any,req:any ) : Promise<any> {
+        const client = new MongoClient(process.env.DATABASE || '');
+        try{
+            const selectDB = client.db(db)
+            const data = await selectDB.collection(collection).updateMany(id,req)
+            return data
+        }catch(err:any){
+            console.log(err)
+            return err
+        }finally{
+            client.close()
+    }
 }
+        }
 
 export {MongoConnect}

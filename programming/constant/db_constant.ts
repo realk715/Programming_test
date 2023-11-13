@@ -3,8 +3,8 @@ enum DATABASE_NAME {
 }
 
 enum COLLECTION_NAME {
-    USER_TEST = 'user_test'
-    
+    USER_TEST = 'user_test',
+    LOG_TEST = 'log_test'
 }
 
 export {DATABASE_NAME,COLLECTION_NAME}

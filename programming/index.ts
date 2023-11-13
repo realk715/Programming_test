@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/user',userRouter)
-
+app.use('/api/admin')
 
 app.listen(process.env.PORT || 3000, ()=> {
     console.log('server listening on port 3000')
