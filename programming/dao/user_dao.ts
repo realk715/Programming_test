@@ -1,5 +1,5 @@
-import { MongoConnect } from "../db/Mongo_connect";
-import { DATABASE_NAME, COLLECTION_NAME } from "../constant/db_constant";
+import { MongoConnect } from '../db/Mongo_connect';
+import { DATABASE_NAME, COLLECTION_NAME } from '../constant/db_constant';
 
 export class UserDao {
   public async registerUser(req: any): Promise<any> {
@@ -22,13 +22,13 @@ export class UserDao {
     return data;
   }
 
-  public async updateUser(req: any, id: any): Promise<any> {
+  public async updateUser(filter: any, update: any): Promise<any> {
     const connect = new MongoConnect();
     const data = connect.updateData(
       DATABASE_NAME.DEV_TEST,
       COLLECTION_NAME.USER_TEST,
-      id,
-      req
+      filter,
+      update
     );
     return data;
   }

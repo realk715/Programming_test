@@ -15,7 +15,28 @@ export declare interface  ITokenListReqeust {
     USDT: number;
 }
 
-export declare interface ILogin{
+export declare interface ILoginReqeust {
+    username: string;
+    password: string;
+}
+
+export declare interface ITransferReqeust {
+    username: string;
+    recipient: string;
+    transferToken: string;
+    amount: number;
+    toToken:string;
+
+}
+
+export declare interface IExchangeRareReqeust {
     username : string;
-    password : string;
+    tokenName : string;
+    price_usdt :number;
+
+}
+
+export declare interface IchangeUsertoAdminRequest {
+    username:string;
+    secret: string ;
 }

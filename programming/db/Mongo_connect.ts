@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient } from 'mongodb';
 
 
 class MongoConnect {
@@ -33,11 +33,11 @@ class MongoConnect {
         }
     }
 
-    public async updateData(db:string, collection:string, id:any,req:any ) : Promise<any> {
+    public async updateData(db:string, collection:string,filter: any, update: any ) : Promise<any> {
         const client = new MongoClient(process.env.DATABASE || '');
         try{
             const selectDB = client.db(db)
-            const data = await selectDB.collection(collection).updateMany(id,req)
+            const data = await selectDB.collection(collection).updateOne(filter, update);
             return data
         }catch(err:any){
             console.log(err)

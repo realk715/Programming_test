@@ -2,8 +2,8 @@ import { UserDao } from "../dao/user_dao";
 import { LogDao } from "../dao/log_dao";
 import bcrypt from "bcrypt";
 import Wallet from "ethereumjs-wallet";
-import { IRegisterUserReqeust, ILogin,ITransfer } from "../types/user_types";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { IRegisterUserReqeust, ILoginReqeust, ITransferReqeust } from '../types/user_types';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
 class UserCtr {
   public async register(body: IRegisterUserReqeust): Promise<any> {
@@ -12,7 +12,7 @@ class UserCtr {
     console.log(body);
     if (!body || !body.username || !body.password) {
       return {
-        message: "Invalid request body",
+        message: 'Invalid request body',
       };
     }
     const isRegister = await userDao.queryUser({ username: body.username });
@@ -38,31 +38,34 @@ class UserCtr {
           BTC: 0,
           USDT: 0,
         },
-        role: "user",
+        role: 'user',
       });
 
       //loginsert
       await logDao.insertLog({
         username: body.username,
-        type: "register",
+        type: 'register',
         create_at: new Date(Date.now()).toISOString(),
       });
 
       return {
         data: register,
-        message: "RegisterSuccess",
+        status:200,
+        message: 'RegisterSuccess',
       };
     } else {
       return {
-        message: "Username Already registered",
+        message: 'Username Already registered',
+        status:400
       };
     }
   }
 
-  public async login(body: ILogin): Promise<any> {
+  public async login(body: ILoginReqeust): Promise<any> {
     if (!body || !body.username || !body.password) {
       return {
-        message: "Invalid request body",
+        message: 'Invalid request body',
+        status:'400'
       };
     }
 
@@ -88,11 +91,7 @@ class UserCtr {
             expiresIn,
           });
 
-          //decoded
-          // const decoded = jwt.verify(token, String(process.env.SECRET))as JwtPayload ;
-          // console.log(decoded);
-
-          //loginsert
+          //log insert
           await logDao.insertLog({
             username: body.username,
             type: 'login',
@@ -100,29 +99,71 @@ class UserCtr {
           });
           return {
             token: token,
-            message: "Login successful",
+            message: 'Login successful',
+            status:'200'
           };
         }
       } else {
         return {
           token: null,
-          message: "Wrong username or password",
+          message: 'Wrong username or password',
+          status:'400'
         };
       }
     } catch (err) {
-      console.error("Error during login: ", err);
+      console.error('Error during login:');
       return {
         token: null,
-        message: "Error during login",
+        message: 'Error during login',
+        status:'400'
       };
     }
   }
-
-  public async transfer(token:any,body:ITransfer){
-
+  private async CheckAuth(token: string) {
+    try {
+      const checkAuth = jwt.verify(
+        token,
+        String(process.env.SECRET)
+      ) as JwtPayload;
+      return checkAuth
+    } catch (err) {
+      console.error('Error during token verification:');
+      return err; 
+    }
   }
 
+  public async transfer(token: any, body: ITransferReqeust): Promise<any> {
+    if(!body || !body.username || !body.recipient || !body.transferToken || !body.toToken ){
+      return {
+        message:'plese provide username recipient transfer_token to_token ',
+        status:400
+      }
+    }
+    try {
+        const decodedToken:any = await this.CheckAuth(token) 
+        if (decodedToken.username === body.username ) {
+
+
+            return {
+              message: 'Transfer successful',
+              status:200
+            };
+        } else {
+            return {
+                message: 'Can not Transfer username does not match',
+                status:400
+            };
+        }
+    } catch (err) {
+        console.error("Error during transfer:", err);
+        return {
+            message: 'Error during transfer',
+            status:401
+        };
+    }
 }
 
+  
+}
 
 export default UserCtr;
