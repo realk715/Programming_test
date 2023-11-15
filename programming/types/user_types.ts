@@ -1,12 +1,12 @@
-export declare interface IRegisterUserReqeust {
+export declare interface IRegisterUserRequest {
     username: string;
     password: string;
     wallet: string;
-    balance: ITokenListReqeust;
+    balance: ITokenListRequest;
     role: string;
 }
 
-export declare interface  ITokenListReqeust {
+export declare interface  ITokenListRequest {
     XRP: number;
     EOS: number;
     XLM: number;
@@ -15,28 +15,35 @@ export declare interface  ITokenListReqeust {
     USDT: number;
 }
 
-export declare interface ILoginReqeust {
+export declare interface ILoginRequest {
     username: string;
     password: string;
 }
 
-export declare interface ITransferReqeust {
-    username: string;
-    recipient: string;
+export declare interface ITransferRequest {
+    username :string;
+    senderWallet: string;
+    recipientWallet: string;
     transferToken: string;
     amount: number;
     toToken:string;
 
 }
 
-export declare interface IExchangeRareReqeust {
+export declare interface IExchangeRateRequest {
     username : string;
     tokenName : string;
-    price_usdt :number;
+    priceUSDT :number;
 
 }
 
 export declare interface IchangeUsertoAdminRequest {
     username:string;
     secret: string ;
+}
+
+export declare interface IEditBalanceRequest {
+    username:string;
+    token:string;
+    amount:number;
 }

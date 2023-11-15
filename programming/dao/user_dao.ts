@@ -32,4 +32,15 @@ export class UserDao {
     );
     return data;
   }
+
+  public async groupBy(req:any): Promise<any> {
+    const connect = new MongoConnect();
+    const data = connect.aggregate(
+      DATABASE_NAME.DEV_TEST,
+      COLLECTION_NAME.USER_TEST,
+      req
+    );
+    return data;
+  }
+
 }

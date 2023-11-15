@@ -11,4 +11,15 @@ export class ExchangeRateDataDao {
     );
     return data;
   }
+
+  public async queryExchangeRate(req: any): Promise<any> {
+    const connect = new MongoConnect();
+    const data = await connect.queryData(
+      DATABASE_NAME.DEV_TEST,
+      COLLECTION_NAME.CRYPTO_TEST,
+      req
+    );
+    return data;
+  }
+
 }
