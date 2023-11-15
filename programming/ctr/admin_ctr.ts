@@ -44,7 +44,7 @@ class AdminCtr {
         return {
           data:null,
             message: 'Add exchange rate successfully. ',
-            stasus:200
+            status:200
         }
     }else{
         return {
