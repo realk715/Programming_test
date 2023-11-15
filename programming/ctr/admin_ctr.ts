@@ -15,7 +15,7 @@ class AdminCtr {
 
       if (!body || !body.username || !body.tokenName || !body.priceUSDT) {
         return {
-          message: "plese provide username recipient transfer_token to_token ",
+          message: 'plese provide username recipient transfer_token to_token ',
           status: 400,
         };
       }
@@ -76,7 +76,7 @@ class AdminCtr {
 
       const userdao = new UserDao();
 
-      if (body.secret === "chomchob") {
+      if (body.secret === process.env.SECRET) {
         const user = await userdao.queryUser({ username: body.username });
         if (user && user.length > 0) {
           let updatedRole;
@@ -110,14 +110,14 @@ class AdminCtr {
         }
       } else {
         return {
-          message: "check your secret",
+          message: 'check your secret',
           status: 400,
         };
       }
     } catch {
-      console.log("Error: Could not change user role.");
+      console.log('Error: Could not change user role.');
       return {
-        message: "Please check your secret or username",
+        message: 'Please check your secret or username',
         status: 400,
       };
     }
@@ -127,7 +127,7 @@ class AdminCtr {
   public async editBalance(token:any,body:IEditBalanceRequest) : Promise<any> {
     if (!body || !body.username || !body.token || !body.amount) {
         return {
-          message: "plese provide username token and amount. ",
+          message: 'plese provide username token and amount. ',
           status: 400,
         };
       }
