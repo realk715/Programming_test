@@ -21,8 +21,6 @@ export declare interface ILoginRequest {
 }
 
 export declare interface ITransferRequest {
-    username :string;
-    senderWallet: string;
     recipientWallet: string;
     transferToken: string;
     amount: number;
@@ -46,4 +44,9 @@ export declare interface IEditBalanceRequest {
     username:string;
     token:string;
     amount:number;
+}
+
+export declare interface IEditExchangeRateRequest {
+    tokenName:string;
+    editPriceUSDT:number;
 }

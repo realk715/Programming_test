@@ -22,4 +22,15 @@ export class ExchangeRateDataDao {
     return data;
   }
 
+  public async updateExchangeRate(filter: any, update: any): Promise<any> {
+    const connect = new MongoConnect();
+    const data = connect.updateData(
+      DATABASE_NAME.DEV_TEST,
+      COLLECTION_NAME.CRYPTO_TEST,
+      filter,
+      update
+    );
+    return data;
+  }
+
 }

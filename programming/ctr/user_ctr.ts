@@ -8,7 +8,7 @@ import {
   ILoginRequest,
   ITransferRequest,
 } from "../types/user_types";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt, { JwtPayload, decode } from "jsonwebtoken";
 
 class UserCtr {
   public async register(body: IRegisterUserRequest): Promise<any> {
@@ -17,7 +17,9 @@ class UserCtr {
     console.log(body);
     if (!body || !body.username || !body.password) {
       return {
+        data: null,
         message: "Invalid request body",
+        status: 400,
       };
     }
     const isRegister = await userDao.queryUser({ username: body.username });
@@ -54,12 +56,13 @@ class UserCtr {
       });
 
       return {
-        data: register,
+        data: { user: register },
         status: 200,
         message: "RegisterSuccess",
       };
     } else {
       return {
+        data: null,
         message: "Username Already registered",
         status: 400,
       };
@@ -69,6 +72,7 @@ class UserCtr {
   public async login(body: ILoginRequest): Promise<any> {
     if (!body || !body.username || !body.password) {
       return {
+        data: null,
         message: "Invalid request body",
         status: 400,
       };
@@ -103,14 +107,14 @@ class UserCtr {
             create_at: new Date(Date.now()).toISOString(),
           });
           return {
-            token: token,
+            data: { token: token },
             message: "Login successful",
-            status: 200,
+            status: 201,
           };
         }
       } else {
         return {
-          token: null,
+          data: null,
           message: "Wrong username or password",
           status: 400,
         };
@@ -118,7 +122,7 @@ class UserCtr {
     } catch (err) {
       console.error("Error during login:");
       return {
-        token: null,
+        data: null,
         message: "Error during login",
         status: 400,
       };
@@ -140,154 +144,187 @@ class UserCtr {
   public async transfer(token: any, body: ITransferRequest): Promise<any> {
     if (
       !body ||
-      !body.username ||
-      !body.senderWallet ||
       !body.recipientWallet ||
       !body.transferToken ||
       !body.amount ||
+      body.amount <= 0 ||
       !body.toToken
     ) {
       return {
-        message:
-          "plese provide senderWallet recipientWallet transferToken toToken ",
+        data: null,
+        message: "bad request",
         status: 400,
       };
     }
     try {
       const decodedToken: any = await this.CheckAuth(token);
-      if (decodedToken.wallet === body.senderWallet) {
-        const userdao = new UserDao();
-        const exchangeRatedao = new ExchangeRateDataDao();
-        const UtransferToken = body.transferToken.toUpperCase();
-        const UtoToken = body.toToken.toUpperCase();
+      const userdao = new UserDao();
+      const exchangeRatedao = new ExchangeRateDataDao();
+      const logdao = new LogDao();
+      const UtransferToken = body.transferToken.toUpperCase();
+      const UtoToken = body.toToken.toUpperCase();
 
-        const queryRecipientWallet = await userdao.queryUser({
-          wallet: body.recipientWallet,
-        });
-        const querySenderWallet = await userdao.queryUser({
-          wallet: body.senderWallet,
-        });
+      const queryRecipientWallet = await userdao.queryUser({
+        wallet: body.recipientWallet,
+      });
+      const querySenderWallet = await userdao.queryUser({
+        wallet: decodedToken.wallet,
+      });
+      const queryTransferToken = await exchangeRatedao.queryExchangeRate({
+        token: UtransferToken,
+      });
+      const queryToToken = await exchangeRatedao.queryExchangeRate({
+        token: UtoToken,
+      });
 
-        //ตรวจสอบว่ามีกระเป๋าผู้รับไหม
-        if (body.recipientWallet === queryRecipientWallet[0].wallet) {
-          //ผู้ส่งต้องมีเหรียญมากกว่าจำนวนที่ส่ง
-          if (
-            querySenderWallet[0].balance[UtransferToken] > 0 &&
-            querySenderWallet[0].balance[UtransferToken] >= body.amount
-          ) {
-            //ถ้าผู้รับมีเหรียญในกระเป๋าอยู่แล้วไม่ใช่เหรียญใหม่
-            if (
-              queryRecipientWallet[0].balance.hasOwnProperty(UtransferToken)
-            ) {
-              //กรณีส่งโทเคนเดียวกัน
-              if (UtransferToken === UtoToken) {
-                //senderWallet update
-                const senderUpdateField = `balance.${UtransferToken}`;
-                const SenderAmount =
-                  Number(querySenderWallet[0].balance[UtransferToken]) -
-                  Number(body.amount);
-                const editSenderWallet = await userdao.updateUser(
-                  { wallet: body.senderWallet },
-                  { $set: { [senderUpdateField]: SenderAmount } }
-                );
+      //ตรวจสอบว่ามีกระเป๋าผู้รับไหม
+      if (!queryRecipientWallet) {
+        return {
+          message: "Not found recipientWallet ",
+          status: 400,
+        };
+      }
+      //ผู้ส่งต้องมีเหรียญมากกว่าจำนวนที่ส่ง
+      if (querySenderWallet[0].balance[UtransferToken] <= body.amount) {
+        return {
+          data: null,
+          message: "insufficient balance",
+          status: 400,
+        };
+      }
 
-                //recipientWallet update
-                const recipientUpdateField = `balance.${UtoToken}`;
-                const recipientAmount =
-                  Number(queryRecipientWallet[0].balance[UtransferToken]) +
-                  Number(body.amount);
+      //ถ้าผู้รับมีเหรียญในกระเป๋าอยู่แล้วไม่ใช่เหรียญใหม่
+      if (queryRecipientWallet[0].balance.hasOwnProperty(UtransferToken)) {
+        //กรณีส่งโทเคนเดียวกัน
+        if (UtransferToken === UtoToken) {
+          //senderWallet update
+          const senderUpdateField = `balance.${UtransferToken}`;
+          const SenderAmount =
+            Number(querySenderWallet[0].balance[UtransferToken]) -
+            Number(body.amount);
+          const editSenderWallet = await userdao.updateUser(
+            { wallet: decodedToken.wallet },
+            { $set: { [senderUpdateField]: SenderAmount } }
+          );
 
-                const editRecipientWallet = await userdao.updateUser(
-                  { wallet: body.recipientWallet },
-                  { $set: { [recipientUpdateField]: recipientAmount } }
-                );
+          //recipientWallet update
+          const recipientUpdateField = `balance.${UtoToken}`;
+          const recipientAmount =
+            Number(queryRecipientWallet[0].balance[UtransferToken]) +
+            Number(body.amount);
 
-                return {
-                  message: ` ${body.senderWallet} Transfer ${body.amount} ${UtransferToken} to ${body.recipientWallet} successful`,
-                  status: 200,
-                };
+          const editRecipientWallet = await userdao.updateUser(
+            { wallet: body.recipientWallet },
+            { $set: { [recipientUpdateField]: recipientAmount } }
+          );
 
-                //กรณีส่งคนละtoken
-              } else {
-                const queryTransferToken =
-                  await exchangeRatedao.queryExchangeRate({
-                    token: UtransferToken,
-                  });
-                const queryToToken = await exchangeRatedao.queryExchangeRate({
-                  token: UtoToken,
-                });
+          //loginsert
+          await logdao.insertLog({
+            wallet: decodedToken.wallet,
+            type: 'transfer',
+            token:UtransferToken,
+            amount:body.amount,
+            toToken:UtoToken,
+            toWallet:body.recipientWallet,
+            create_at: new Date(Date.now()).toISOString(),
+          });
 
-                //senderWallet update
-                const senderUpdateField = `balance.${UtransferToken}`;
-                const SenderAmount =
-                  Number(querySenderWallet[0].balance[UtransferToken]) -
-                  Number(body.amount);
-                const editSenderWallet = await userdao.updateUser(
-                  { wallet: body.senderWallet },
-                  { $set: { [senderUpdateField]: SenderAmount } }
-                );
-
-                const priceTransferToken = queryTransferToken[0].priceUSDT; //ดึงราคาเหรียญที่จะส่งจากdb
-                const priceToToken = queryToToken[0].priceUSDT; //ดึงราคาเหรียญที่ผู้รับจะได้รับจากdb
-                const SenderPrice = Number(body.amount * priceTransferToken); //จะได้ราคาเป็นusdt
-                const swap = SenderPrice / priceToToken; //แปลงราคาจากusdtเป็นจำนวนเหรียญที่ผู้รับจะได้รับ
-
-                //recipientWallet update
-                const recipientUpdateField = `balance.${UtoToken}`;
-
-                const editRecipientWallet = await userdao.updateUser(
-                  { wallet: body.recipientWallet },
-                  { $set: { [recipientUpdateField]: swap } }
-                );
-
-                return {
-                  message: ` ${body.senderWallet} Transfer ${body.amount} ${UtransferToken} for  ${swap} ${UtoToken} to ${body.recipientWallet} successful`,
-                  status: 200,
-                };
-              }
-
-              //ถ้าผู้รับยังไม่มีเหรียญที่ผู้ส่งมี
-            } else {
-              //senderWallet update
-              const senderUpdateField = `balance.${UtransferToken}`;
-              const SenderAmount =
-                Number(querySenderWallet[0].balance[UtransferToken]) -
-                Number(body.amount);
-              const editSenderWallet = await userdao.updateUser(
-                { wallet: body.senderWallet },
-                { $set: { [senderUpdateField]: SenderAmount } }
-              );
-
-              //recipientWallet update
-              const recipientUpdateField = `balance.${UtoToken}`;
-              const recipientAmount = Number(body.amount);
-              const editRecipientWallet = await userdao.updateUser(
-                { wallet: body.recipientWallet },
-                { $set: { [recipientUpdateField]: recipientAmount } }
-              );
-
-              return {
-                message: ` ${body.senderWallet} Transfer ${body.amount} ${UtransferToken} to ${body.recipientWallet} successful`,
-                status: 200,
-              };
-            }
-          } else {
-            return { message: "insufficient funds" };
-          }
-        } else {
           return {
-            message: "Not found recipientWallet ",
+            data: null,
+            message: ` ${decodedToken.wallet} Transfer ${body.amount} ${UtransferToken} to ${body.recipientWallet} successful`,
+            status: 200,
+          };
+
+          //กรณีส่งคนละtoken
+        } else {
+          if (
+            !queryTransferToken ||
+            !queryTransferToken[0] ||
+            !Array.isArray(queryToToken) ||
+            queryToToken.length === 0
+          ) {
+            return {
+              data: null,
+              message: `token not have exchange rate`,
+              status: 400,
+            };
+          }
+
+          //senderWallet update
+          const senderUpdateField = `balance.${UtransferToken}`;
+          const SenderAmount =
+            Number(querySenderWallet[0].balance[UtransferToken]) -
+            Number(body.amount);
+          const editSenderWallet = await userdao.updateUser(
+            { wallet: decodedToken.wallet },
+            { $set: { [senderUpdateField]: SenderAmount } }
+          );
+
+          const priceTransferToken = queryTransferToken[0].priceUSDT; //ดึงราคาเหรียญที่จะส่งจากdb
+          const priceToToken = queryToToken[0].priceUSDT; //ดึงราคาเหรียญที่ผู้รับจะได้รับจากdb
+          const SenderPrice = Number(body.amount * priceTransferToken); //จะได้ราคาเป็นusdt
+          const swap = SenderPrice / priceToToken; //แปลงราคาจากusdtเป็นจำนวนเหรียญที่ผู้รับจะได้รับ
+
+          //recipientWallet update
+          const recipientUpdateField = `balance.${UtoToken}`;
+
+          const editRecipientWallet = await userdao.updateUser(
+            { wallet: body.recipientWallet },
+            { $set: { [recipientUpdateField]: swap } }
+          );
+            //loginsert
+          await logdao.insertLog({
+            wallet: decodedToken.wallet,
+            type: 'transfer',
+            token:UtransferToken,
+            amount:body.amount,
+            toToken:UtoToken,
+            toWallet:body.recipientWallet,
+            create_at: new Date(Date.now()).toISOString(),
+          });
+          return {
+            data: null,
+            message: ` ${decodedToken.wallet} Transfer ${body.amount} ${UtransferToken} for  ${swap} ${UtoToken} to ${body.recipientWallet} successful`,
+            status: 200,
+          };
+        }
+
+        //ถ้าผู้รับยังไม่มีเหรียญที่ผู้ส่งมี
+      } else {
+        if (UtransferToken !== UtoToken) {
+          return {
+            data: null,
+            message: ` ${UtransferToken} dont have exchange rate you can only send   ${UtransferToken} to ${UtransferToken}   `,
             status: 400,
           };
         }
-      } else {
+        //senderWallet update
+        const senderUpdateField = `balance.${UtransferToken}`;
+        const SenderAmount =
+          Number(querySenderWallet[0].balance[UtransferToken]) -
+          Number(body.amount);
+        const editSenderWallet = await userdao.updateUser(
+          { wallet: decodedToken.wallet },
+          { $set: { [senderUpdateField]: SenderAmount } }
+        );
+
+        //recipientWallet update
+        const recipientUpdateField = `balance.${UtoToken}`;
+        const recipientAmount = Number(body.amount);
+        const editRecipientWallet = await userdao.updateUser(
+          { wallet: body.recipientWallet },
+          { $set: { [recipientUpdateField]: recipientAmount } }
+        );
+          
         return {
-          message: "Wrong sender wallet address",
-          status: 400,
+          data: null,
+          message: ` ${decodedToken.wallet} Transfer ${body.amount} ${UtransferToken} to ${body.recipientWallet} successful`,
+          status: 200,
         };
       }
     } catch (err) {
       return {
+        data: null,
         message: "Error during transfer please check token price",
         status: 401,
       };

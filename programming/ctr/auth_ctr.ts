@@ -9,7 +9,10 @@ const Authentication = (req: AuthRequest, res: Response, next: NextFunction) => 
   const header: { token: string } = req.headers as { token: string };
 
   if(header.token=== undefined || header.token === null ) {
-    return res.status(401).json({message : 'Need headers token '})
+    return res.status(401).json({
+      data: null,
+      message : 'Need headers token '
+      })
   }
   try {
     if (header.token) {
@@ -29,7 +32,10 @@ const Authentication = (req: AuthRequest, res: Response, next: NextFunction) => 
     // ตรวจสอบว่า error เป็น JsonWebTokenError หรือไม่
     if (err instanceof JsonWebTokenError) {
       // ส่ง response กลับไปที่ client
-      return res.status(401).json({ message: 'Wrong token' });
+      return res.status(401).json({ 
+        data:null,
+        message: 'Wrong token'
+      });
     }
 
   }

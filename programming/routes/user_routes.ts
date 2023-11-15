@@ -6,19 +6,19 @@ const router = Router();
 router.post('/register', async (req: Request, res: Response) => {
   const userCtr = new UserCtr();
   const result = await userCtr.register(req.body);
-  res.json(result).status(result.status);
+  res.status(result.status).json(result)
 });
 
 router.post('/login', async (req: Request, res: Response) => {
   const userCtr = new UserCtr();
   const result = await userCtr.login(req.body);
-  res.json(result).status(result.status);
+  res.status(result.status).json(result)
 });
 
 router.post('/transfer', AuthCtr, async (req: Request, res: Response) => {
     const userCtr = new UserCtr();
     const result = await userCtr.transfer(req.headers.token,req.body);
-    res.json(result).status(result.status);
+    res.status(result.status).json(result)
   });
   
 
